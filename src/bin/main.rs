@@ -25,14 +25,14 @@ pub mod embassy_pac {
     dispatchers = [WWDG, IWDG, CRS]
 )]
 mod app {
+    use lib::icm45686::config::Slew;
     use defmt::{info, warn, error, debug, Format};
     use embassy_stm32::*;
     use embassy_stm32::gpio::OutputType;
-    use embassy_stm32::spi::{BitOrder, SlaveSelectPolarity};
-    use embassy_stm32::timer::low_level::CountingMode;
     use rtic_monotonics::rtic_time::embedded_hal_async::delay::DelayNs;
-    use lib::icm45686::config::{AccelMode, AccelOdr, AccelRange, GyroMode, GyroOdr, GyroRange};
+    use lib::icm45686::config::{AccelMode, AccelOdr, AccelRange, GyroMode, GyroOdr, GyroRange, SpiSlew};
     use lib::icm45686::Icm45686;
+    use lib::mmc5983::Mmc5983;
     use super::*;
 
     bind_interrupts!(struct Irqs {
@@ -160,10 +160,10 @@ mod app {
         // icm fsync is pe14
         let mut icm2_config: spi::Config = Default::default();
         icm2_config.frequency = time::mhz(24);
-        icm2_config.nss_polarity = SlaveSelectPolarity::ActiveLow;
+        icm2_config.nss_polarity = spi::SlaveSelectPolarity::ActiveLow;
         let mut icm1_config: spi::Config = Default::default();
         icm1_config.frequency = time::mhz(24);
-        icm1_config.nss_polarity = SlaveSelectPolarity::ActiveLow;
+        icm1_config.nss_polarity = spi::SlaveSelectPolarity::ActiveLow;
         let mut bmp_config: spi::Config = Default::default();
         bmp_config.frequency = time::mhz(12);
         let mut mag_config: spi::Config = Default::default();
@@ -203,14 +203,22 @@ mod app {
         gps_config.baudrate = 921600;
         let mut gps: usart::Uart<mode::Async> = usart::Uart::new(p.USART3, p.PD9, p.PD8, p.GPDMA2_CH2, p.GPDMA2_CH3, Irqs, gps_config).unwrap();
 
-        let icm_clk_pin = timer::simple_pwm::PwmPin::new(p.PE14, OutputType::PushPull);
-        let mut icm_clk = timer::simple_pwm::SimplePwm::new(p.TIM1, None, None, None, Some(icm_clk_pin), time::hz(31250), CountingMode::EdgeAlignedUp);
+        // todo should this just use simplepwm for everything?
+        // use simplepwm to set the pin up correctly but low level timer api to configure the clock
+        let _icm_clk_pin = timer::simple_pwm::PwmPin::new(p.PE14, OutputType::PushPull);
+
+        let icm_clk = timer::low_level::Timer::new(p.TIM1);
+        icm_clk.set_frequency(time::khz(64), timer::low_level::RoundTo::Slower);
+        icm_clk.set_compare_value(timer::Channel::Ch4, 32768); // nearly exactly 50% duty cycle
+        icm_clk.set_output_compare_mode(timer::Channel::Ch4, timer::low_level::OutputCompareMode::Toggle);
+        icm_clk.start();
+
         let pwm1_pin1 = timer::simple_pwm::PwmPin::new(p.PA0, OutputType::PushPull);
         let pwm1_pin2 = timer::simple_pwm::PwmPin::new(p.PA1, OutputType::PushPull);
         let pwm1_pin3 = timer::simple_pwm::PwmPin::new(p.PA2, OutputType::PushPull);
         let pwm1_pin4 = timer::simple_pwm::PwmPin::new(p.PA3, OutputType::PushPull);
         let mut pwm1 = timer::simple_pwm::SimplePwm::new(
-            p.TIM2, Some(pwm1_pin1), Some(pwm1_pin2), Some(pwm1_pin3), Some(pwm1_pin4), time::hz(300), CountingMode::EdgeAlignedUp
+            p.TIM2, Some(pwm1_pin1), Some(pwm1_pin2), Some(pwm1_pin3), Some(pwm1_pin4), time::hz(300), timer::low_level::CountingMode::EdgeAlignedUp
         );
 
         let pwm2_pin1 = timer::simple_pwm::PwmPin::new(p.PC6, OutputType::PushPull);
@@ -218,7 +226,7 @@ mod app {
         let pwm2_pin3 = timer::simple_pwm::PwmPin::new(p.PC8, OutputType::PushPull);
         let pwm2_pin4 = timer::simple_pwm::PwmPin::new(p.PC9, OutputType::PushPull);
         let mut pwm2 = timer::simple_pwm::SimplePwm::new(
-            p.TIM3, Some(pwm2_pin1), Some(pwm2_pin2), Some(pwm2_pin3), Some(pwm2_pin4), time::hz(300), CountingMode::EdgeAlignedUp
+            p.TIM3, Some(pwm2_pin1), Some(pwm2_pin2), Some(pwm2_pin3), Some(pwm2_pin4), time::hz(300), timer::low_level::CountingMode::EdgeAlignedUp
         );
 
         // needs to be reconfigured for new operations when needed - todo figure out what most useful is
@@ -227,14 +235,15 @@ mod app {
 
         let icm1 = Icm45686::new(icm1);
         let icm2 = Icm45686::new(icm2);
+        let mag = Mmc5983::new(mag);
 
         // MUST NEVER SPAWN ANOTHER TASK FROM INIT
-        postinit::spawn(icm1, icm2).ok();
-        
+        postinit::spawn(icm1, icm2, mag).ok();
+
         info!("init done");
         (
             Shared {
-
+                
             },
             Local {
                 loop_count: 0
@@ -250,19 +259,35 @@ mod app {
             cortex_m::asm::nop()
         }
     }
-    
+
     #[task(priority = 15)]
     /**
      * inits all hardware stuff, MUST BE RUN IMMEDIATELY AFTER INIT WITH NO OTHER TASKS RUNNING
      * basically just acts as an async part of init
      */
-    async fn postinit(_cx: postinit::Context, mut icm1: Icm45686, mut icm2: Icm45686) {
-        icm1.init().await;
-        icm2.init().await;
+    async fn postinit(_cx: postinit::Context, mut icm1: Icm45686, mut icm2: Icm45686, mut mag: Mmc5983) {
+        icm1.init_int1().await;
+        icm2.init_int1().await;
+        icm1.set_spi_slew(SpiSlew::Medium).await;
+        icm2.set_spi_slew(SpiSlew::Medium).await;
+        icm1.set_slew(Slew::Medium).await;
+        icm2.set_slew(Slew::Medium).await;
         icm1.set_power_mode(GyroMode::LowNoise, AccelMode::LowNoise).await;
         icm2.set_power_mode(GyroMode::LowNoise, AccelMode::LowNoise).await;
         icm1.set_range_odr(AccelRange::Range8, AccelOdr::Odr6400, GyroRange::Range1000, GyroOdr::Odr6400).await;
         icm2.set_range_odr(AccelRange::Range32, AccelOdr::Odr6400, GyroRange::Range4000, GyroOdr::Odr6400).await;
+        icm1.set_osc_external().await;
+        icm2.set_osc_external().await;
+        // todo ensure the cs doesn't cause issues with spi
+        cortex_m::interrupt::free(|_| {
+            // there still will be some desync, but this is the best we can do
+            icm1.realign();
+            icm2.realign();
+        });
+        // safe to panic here, we've only just started the firmware (not in flight loop yet)
+        if !(icm1.whoami().await && icm2.whoami().await ) {
+            panic!("both icms didn't respond correctly to whoami!")
+        }
 
         // spawm all tasks from here
         task1::spawn().ok();

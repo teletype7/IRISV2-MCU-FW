@@ -36,3 +36,5 @@ pub fn exit() -> ! {
 }
 
 pub mod icm45686;
+pub mod mmc5983;
+pub mod bmp581;

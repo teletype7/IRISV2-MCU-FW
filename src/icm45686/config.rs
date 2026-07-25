@@ -70,3 +70,35 @@ pub enum AccelMode {
     LowPower    = 0b10,
     LowNoise    = 0b11
 }
+
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum OscSource {
+    Auto    = 0b0000,
+    Mems    = 0b0010,
+    Ext     = 0b1000
+}
+
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SpiSlew {
+    Minimum     = 0b000, // 12ns min, 38ns typ, 106ns max
+    VerySlow    = 0b001, // 4ns min, 14ns typ, 45ns max
+    Slow        = 0b010, // 3ns min, 10ns typ, 37ns max
+    Medium      = 0b011, // 2ns min, 7ns typ, 25ns max
+    Fast        = 0b100, // 1ns min, 5ns typ, 17ns max
+    VeryFast    = 0b101, // 1ns min, 4ns typ, 14ns max
+    Maximum     = 0b110  // 0.1ns min, 0.5ns typ, 6ns max
+}
+
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Slew {
+    Minimum     = 0b000, // 12ns min, 38ns typ, 106ns max
+    VerySlow    = 0b001, // 4ns min, 14ns typ, 45ns max
+    Slow        = 0b010, // 3ns min, 10ns typ, 37ns max
+    Medium      = 0b011, // 2ns min, 7ns typ, 25ns max
+    Fast        = 0b100, // 1ns min, 5ns typ, 17ns max
+    VeryFast    = 0b101, // 1ns min, 4ns typ, 14ns max
+    Maximum     = 0b110  // 0.1ns min, 0.5ns typ, 6ns max
+}
