@@ -27,6 +27,7 @@ rtic-monotonics = { version = "2.2.0", features = ["stm32h563vi", "stm32_tim5"] 
 talc =  { version = "5.0.4", features = [] }
 spinning_top = { version = "0.3.0", features = [] }
 embassy-embedded-hal = "0.6.0"
+heapless = { version = "0.9.3", features = ["defmt", "portable-atomic-critical-section"] }
 
 # cargo build/run
 [profile.dev]

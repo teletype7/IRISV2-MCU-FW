@@ -1,3 +1,4 @@
+#![feature(thin_box)]
 #![no_main]
 #![no_std]
 extern crate alloc;
@@ -38,3 +39,4 @@ pub fn exit() -> ! {
 pub mod icm45686;
 pub mod mmc5983;
 pub mod bmp581;
+pub mod neom9n;

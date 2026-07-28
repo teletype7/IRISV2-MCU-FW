@@ -2,6 +2,9 @@
 #![no_std]
 #![feature(proc_macro_hygiene)]
 
+// mostly here so I don't forget to await a Future
+#![deny(unused_must_use)]
+
 extern crate alloc;
 
 use rtic_monotonics::stm32::prelude::*;
@@ -32,7 +35,12 @@ mod app {
     use rtic_monotonics::rtic_time::embedded_hal_async::delay::DelayNs;
     use lib::icm45686::config::{AccelMode, AccelOdr, AccelRange, GyroMode, GyroOdr, GyroRange, SpiSlew};
     use lib::icm45686::Icm45686;
+    use lib::mmc5983::config::{MagAutoSetReset, MagBw, MagOdr};
     use lib::mmc5983::Mmc5983;
+    use lib::bmp581::config::{CompensationConfig, OdrConfig, PowerConfig, PressIirConfig, PressOsrConfig, TempIirConfig, TempOsrConfig};
+    use lib::bmp581::Bmp581;
+    use lib::neom9n::config::DynamicModel;
+    use lib::neom9n::Neo;
     use super::*;
 
     bind_interrupts!(struct Irqs {
@@ -200,7 +208,10 @@ mod app {
         // gps is usart3, using PD9 PD8
         // WHY WAS THE COMPILER SO ANGRY ABOUT THIS
         let mut gps_config = <usart::Uart<'_, mode::Async> as embassy_embedded_hal::SetConfig>::Config::default();
-        gps_config.baudrate = 921600;
+        gps_config.baudrate = 38400;
+        gps_config.data_bits = usart::DataBits::DataBits8;
+        gps_config.parity = usart::Parity::ParityNone;
+        gps_config.stop_bits = usart::StopBits::STOP1;
         let mut gps: usart::Uart<mode::Async> = usart::Uart::new(p.USART3, p.PD9, p.PD8, p.GPDMA2_CH2, p.GPDMA2_CH3, Irqs, gps_config).unwrap();
 
         // todo should this just use simplepwm for everything?
@@ -236,14 +247,16 @@ mod app {
         let icm1 = Icm45686::new(icm1);
         let icm2 = Icm45686::new(icm2);
         let mag = Mmc5983::new(mag);
+        let bmp = Bmp581::new(bmp);
+        let gps = Neo::new(gps);
 
         // MUST NEVER SPAWN ANOTHER TASK FROM INIT
-        postinit::spawn(icm1, icm2, mag).ok();
+        postinit::spawn(icm1, icm2, mag, bmp, gps).ok();
 
         info!("init done");
         (
             Shared {
-                
+
             },
             Local {
                 loop_count: 0
@@ -265,7 +278,7 @@ mod app {
      * inits all hardware stuff, MUST BE RUN IMMEDIATELY AFTER INIT WITH NO OTHER TASKS RUNNING
      * basically just acts as an async part of init
      */
-    async fn postinit(_cx: postinit::Context, mut icm1: Icm45686, mut icm2: Icm45686, mut mag: Mmc5983) {
+    async fn postinit(_cx: postinit::Context, mut icm1: Icm45686, mut icm2: Icm45686, mut mag: Mmc5983, mut bmp: Bmp581, mut gps: Neo) {
         icm1.init_int1().await;
         icm2.init_int1().await;
         icm1.set_spi_slew(SpiSlew::Medium).await;
@@ -288,6 +301,29 @@ mod app {
         if !(icm1.whoami().await && icm2.whoami().await ) {
             panic!("both icms didn't respond correctly to whoami!")
         }
+
+        mag.init().await;
+        mag.set_bw(MagBw::Bw800).await;
+        // set/reset every 2 seconds, may lower that later
+        mag.set_odr_sr(MagOdr::Odr1000, MagAutoSetReset::Sr2000).await;
+        mag.set().await;
+        mag.reset().await;
+        mag.auto_sr(true).await;
+
+        bmp.init().await;
+        // no low pass filter for now, will see if it helps later (prob only coeff 1 at most)
+        bmp.set_iir(TempIirConfig::Bypass, PressIirConfig::Bypass).await;
+        bmp.set_dsp(false, CompensationConfig::Both).await;
+        // allows for 251hz odr, so should be compatible with desired odr
+        // see page 19 of datasheet (table 9)
+        bmp.set_oversample(PressOsrConfig::Osr4, TempOsrConfig::Osr1).await;
+        // normal not continous, since we need *consistent* sample times, not just fast as possible
+        bmp.set_power_odr(PowerConfig::Normal, OdrConfig::Odr240).await;
+        // only runs in debug firmware, which is fine since we'll test with debug firmware before flight
+        debug_assert!(bmp.check_odr_osr_valid().await.0, "invalid osr/odr config!");
+
+        gps.init().await;
+        gps.set_model(DynamicModel::Air4g).await;
 
         // spawm all tasks from here
         task1::spawn().ok();

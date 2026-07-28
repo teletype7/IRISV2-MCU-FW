@@ -20,10 +20,16 @@ impl Mmc5983 {
         let write_buf: [u8; 1] = [0b1000_0000];
         let mut read_buf: [u8; 8] = [0; 8];
         self.spi.transfer(&mut read_buf, &write_buf).await.unwrap();
+        
+        // zero range is 2^17 counts
+        let middle: f32 = 131072.0;
+        // range of +-8 gauss and 18 bit sensitivity
+        let lsb_gauss: f32 = 16384.0;
+        
         MagReport {
-            x: u32::from_le_bytes([0, read_buf[1], read_buf[2], read_buf[7] & 0b1100_0000]) >> 6,
-            y: u32::from_le_bytes([0, read_buf[3], read_buf[4], (read_buf[7] & 0b0011_0000) << 2]) >> 6,
-            z: u32::from_le_bytes([0, read_buf[5], read_buf[6], (read_buf[7] & 0b0000_1100) << 4]) >> 6,
+            x: ((u32::from_le_bytes([0, read_buf[1], read_buf[2], read_buf[7] & 0b1100_0000]) >> 6)        as f32 - middle) / lsb_gauss,
+            y: ((u32::from_le_bytes([0, read_buf[3], read_buf[4], (read_buf[7] & 0b0011_0000) << 2]) >> 6) as f32 - middle) / lsb_gauss,
+            z: ((u32::from_le_bytes([0, read_buf[5], read_buf[6], (read_buf[7] & 0b0000_1100) << 4]) >> 6) as f32 - middle) / lsb_gauss,
         }
     }
 
@@ -31,10 +37,16 @@ impl Mmc5983 {
         let write_buf: [u8; 1] = [0b1000_0000];
         let mut read_buf: [u8; 9] = [0; 9];
         self.spi.transfer(&mut read_buf, &write_buf).await.unwrap();
+
+        // zero range is 2^17 counts
+        let middle: f32 = 131072.0;
+        // range of +-8 gauss and 18 bit sensitivity
+        let lsb_gauss: f32 = 16384.0;
+        
         MagReportTemperature {
-            x: u32::from_le_bytes([0, read_buf[1], read_buf[2], read_buf[7] & 0b1100_0000]) >> 6,
-            y: u32::from_le_bytes([0, read_buf[3], read_buf[4], (read_buf[7] & 0b0011_0000) << 2]) >> 6,
-            z: u32::from_le_bytes([0, read_buf[5], read_buf[6], (read_buf[7] & 0b0000_1100) << 4]) >> 6,
+            x: ((u32::from_le_bytes([0, read_buf[1], read_buf[2], read_buf[7] & 0b1100_0000]) >> 6)        as f32 - middle) / lsb_gauss,
+            y: ((u32::from_le_bytes([0, read_buf[3], read_buf[4], (read_buf[7] & 0b0011_0000) << 2]) >> 6) as f32 - middle) / lsb_gauss,
+            z: ((u32::from_le_bytes([0, read_buf[5], read_buf[6], (read_buf[7] & 0b0000_1100) << 4]) >> 6) as f32 - middle) / lsb_gauss,
             temp: (read_buf[8] as f32) * 0.8 - 75.0
         }
     }
@@ -43,10 +55,16 @@ impl Mmc5983 {
         let write_buf: [u8; 1] = [0b1000_0000];
         let mut read_buf: [u8; 7] = [0; 7];
         self.spi.transfer(&mut read_buf, &write_buf).await.unwrap();
+        
+        // zero range is 2^15 counts
+        let middle: f32 = 32768.0;
+        // range of +-8 gauss and 16 bit sensitivity
+        let lsb_gauss: f32 = 4096.0;
+        
         MagReport16 {
-            x: u16::from_le_bytes([read_buf[1], read_buf[2]]),
-            y: u16::from_le_bytes([read_buf[3], read_buf[4]]),
-            z: u16::from_le_bytes([read_buf[5], read_buf[6]])
+            x: (u16::from_le_bytes([read_buf[1], read_buf[2]]) as f32 - middle) / lsb_gauss,
+            y: (u16::from_le_bytes([read_buf[3], read_buf[4]]) as f32 - middle) / lsb_gauss,
+            z: (u16::from_le_bytes([read_buf[5], read_buf[6]]) as f32 - middle) / lsb_gauss,
         }
     }
 
@@ -88,24 +106,26 @@ impl Mmc5983 {
     }
 }
 
+/// gauss
 #[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
 pub struct MagReport {
-    x: u32,
-    y: u32,
-    z: u32
+    x: f32,
+    y: f32,
+    z: f32
 }
 
+/// gauss and C
 #[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
 pub struct MagReportTemperature {
-    x: u32,
-    y: u32,
-    z: u32,
+    x: f32,
+    y: f32,
+    z: f32,
     temp: f32
 }
 
 #[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
 pub struct MagReport16 {
-    x: u16,
-    y: u16,
-    z: u16
+    x: f32,
+    y: f32,
+    z: f32
 }

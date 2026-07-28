@@ -9,6 +9,8 @@ pub struct Icm45686 {
     spi: spi::Spi<'static, mode::Async, spi::mode::Master>,
     gyro_mode: GyroMode,
     accel_mode: AccelMode,
+    gyro_range: GyroRange,
+    accel_range: AccelRange,
 }
 impl Icm45686 {
     pub fn new(spi: spi::Spi<'static, mode::Async, spi::mode::Master>) -> Self {
@@ -16,6 +18,8 @@ impl Icm45686 {
             spi,
             gyro_mode: GyroMode::Off,
             accel_mode: AccelMode::Off,
+            gyro_range: GyroRange::Range2000,
+            accel_range: AccelRange::Range16
         }
     }
 
@@ -33,12 +37,12 @@ impl Icm45686 {
 
         // report starts on second byte, first is garbage from sending address
         SixAxisReport {
-            x_accel:    i16::from_le_bytes([read_buf[1], read_buf[2]]),
-            y_accel:    i16::from_le_bytes([read_buf[3], read_buf[4]]),
-            z_accel:    i16::from_le_bytes([read_buf[5], read_buf[6]]),
-            x_gyro:     i16::from_le_bytes([read_buf[7], read_buf[8]]),
-            y_gyro:     i16::from_le_bytes([read_buf[9], read_buf[10]]),
-            z_gyro:     i16::from_le_bytes([read_buf[11], read_buf[12]]),
+            x_accel:    i16::from_le_bytes([read_buf[1], read_buf[2]])   as f32 / self.accel_range.to_lsb_g(),
+            y_accel:    i16::from_le_bytes([read_buf[3], read_buf[4]])   as f32 / self.accel_range.to_lsb_g(),
+            z_accel:    i16::from_le_bytes([read_buf[5], read_buf[6]])   as f32 / self.accel_range.to_lsb_g(),
+            x_gyro:     i16::from_le_bytes([read_buf[7], read_buf[8]])   as f32 / self.gyro_range.to_lsb_dps(),
+            y_gyro:     i16::from_le_bytes([read_buf[9], read_buf[10]])  as f32 / self.gyro_range.to_lsb_dps(),
+            z_gyro:     i16::from_le_bytes([read_buf[11], read_buf[12]]) as f32 / self.gyro_range.to_lsb_dps(),
         }
     }
 
@@ -50,12 +54,12 @@ impl Icm45686 {
 
         // report starts on second byte, first is garbage from sending address
         SixAxisTemperatureReport {
-            x_accel:    i16::from_le_bytes([read_buf[1], read_buf[2]]),
-            y_accel:    i16::from_le_bytes([read_buf[3], read_buf[4]]),
-            z_accel:    i16::from_le_bytes([read_buf[5], read_buf[6]]),
-            x_gyro:     i16::from_le_bytes([read_buf[7], read_buf[8]]),
-            y_gyro:     i16::from_le_bytes([read_buf[9], read_buf[10]]),
-            z_gyro:     i16::from_le_bytes([read_buf[11], read_buf[12]]),
+            x_accel:    i16::from_le_bytes([read_buf[1], read_buf[2]])   as f32 / self.accel_range.to_lsb_g(),
+            y_accel:    i16::from_le_bytes([read_buf[3], read_buf[4]])   as f32 / self.accel_range.to_lsb_g(),
+            z_accel:    i16::from_le_bytes([read_buf[5], read_buf[6]])   as f32 / self.accel_range.to_lsb_g(),
+            x_gyro:     i16::from_le_bytes([read_buf[7], read_buf[8]])   as f32 / self.gyro_range.to_lsb_dps(),
+            y_gyro:     i16::from_le_bytes([read_buf[9], read_buf[10]])  as f32 / self.gyro_range.to_lsb_dps(),
+            z_gyro:     i16::from_le_bytes([read_buf[11], read_buf[12]]) as f32 / self.gyro_range.to_lsb_dps(),
             temp:      (i16::from_le_bytes([read_buf[13], read_buf[14]]) as f32) / 128.0 + 25.0,
         }
     }
@@ -79,6 +83,9 @@ impl Icm45686 {
         } else if gyro_odr as u8 <= GyroOdr::Odr800 as u8 {
             debug_assert!(self.gyro_mode == GyroMode::LowNoise)
         }
+
+        self.gyro_range = gyro_range;
+        self.accel_range = accel_range;
 
         let write_buf: [u8; 3] = [0x1b, ((accel_range as u8) << 4) | (accel_odr as u8), ((gyro_range as u8) << 4) | (gyro_odr as u8)];
         self.spi.write(&write_buf).await.unwrap();
@@ -179,21 +186,24 @@ impl Icm45686 {
     }
 }
 
-// todo do we want to convert this into g/dps or leave it raw? i think g/dps is more useful
+/// accel in g, gyro in degrees/s
+#[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
 pub struct SixAxisReport {
-    x_accel: i16,
-    y_accel: i16,
-    z_accel: i16,
-    x_gyro: i16,
-    y_gyro: i16,
-    z_gyro: i16,
+    x_accel: f32,
+    y_accel: f32,
+    z_accel: f32,
+    x_gyro:  f32,
+    y_gyro:  f32,
+    z_gyro:  f32,
 }
+/// accel in g, gyro in degrees/s, temp in C
+#[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
 pub struct SixAxisTemperatureReport {
-    x_accel: i16,
-    y_accel: i16,
-    z_accel: i16,
-    x_gyro: i16,
-    y_gyro: i16,
-    z_gyro: i16,
-    temp: f32
+    x_accel: f32,
+    y_accel: f32,
+    z_accel: f32,
+    x_gyro:  f32,
+    y_gyro:  f32,
+    z_gyro:  f32,
+    temp:    f32
 }
