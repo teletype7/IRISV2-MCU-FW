@@ -4,9 +4,9 @@ version = 4
 
 [[package]]
 name = "aho-corasick"
-version = "1.1.4"
+version = "1.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ddd31a130427c27518df266943a5308ed92d4b226cc639f5a8f1002816174301"
+checksum = "c982642fa9e8606056828ee9a8505737230110bb1099153c79efe865c59d12ba"
 dependencies = [
  "memchr",
 ]
@@ -97,31 +97,44 @@ checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
 name = "cortex-m"
-version = "0.7.7"
+version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ec610d8f49840a5b376c69663b6369e71f4b34484b9b2eb29fb918d92516cb9"
+checksum = "f985670a83ddb4c96174f696987458ae26fe3d801faf7263b56a2b2252c2f76f"
 dependencies = [
  "bare-metal",
  "bitfield",
+ "cortex-m-macros",
  "critical-section",
  "embedded-hal 0.2.7",
+ "embedded-hal 1.0.0",
  "volatile-register",
 ]
 
 [[package]]
-name = "cortex-m-rt"
-version = "0.7.5"
+name = "cortex-m-macros"
+version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "801d4dec46b34c299ccf6b036717ae0fce602faa4f4fe816d9013b9a7c9f5ba6"
+checksum = "6d1922be58519ad40368fc4ca595a2cefa51a7abf947be3b0c90586dc7dbd0e2"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+]
+
+[[package]]
+name = "cortex-m-rt"
+version = "0.7.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9c439b23bf18154d8a634543caf1ee73cceb723f2902f7ea243634159a00fd47"
 dependencies = [
  "cortex-m-rt-macros",
 ]
 
 [[package]]
 name = "cortex-m-rt-macros"
-version = "0.7.5"
+version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e37549a379a9e0e6e576fd208ee60394ccb8be963889eebba3ffe0980364f472"
+checksum = "061a75f3e7f3f01d649668d68e02d0ef92c7041a9c97b8fe6bc354ddbf40822d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -544,6 +557,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "irisv2-mcu"
+version = "0.1.0"
+dependencies = [
+ "cortex-m",
+ "defmt 1.1.1",
+ "defmt-rtt",
+ "embassy-embedded-hal",
+ "embassy-stm32",
+ "heapless",
+ "panic-probe",
+ "rtic",
+ "rtic-monotonics",
+ "spinning_top",
+ "stm32-metapac",
+ "talc",
+]
+
+[[package]]
 name = "litrs"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -657,9 +688,9 @@ dependencies = [
 
 [[package]]
 name = "regex-automata"
-version = "0.4.16"
+version = "0.4.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8fcfdb36bda0c880c5931cdc7a2bcdc8ba4556847b9d912bca70bc94708711ad"
+checksum = "ad8553b9b26413251cbf30e620595c7a41b3887f03da04579c0e6b0d6a06b4b2"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -702,24 +733,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d9369355b04d06a3780ec0f51ea2d225624db777acbc60abd8ca4832da5c1a42"
 
 [[package]]
-name = "rtic-experiments"
-version = "0.1.0"
-dependencies = [
- "cortex-m",
- "defmt 1.1.1",
- "defmt-rtt",
- "embassy-embedded-hal",
- "embassy-stm32",
- "heapless",
- "panic-probe",
- "rtic",
- "rtic-monotonics",
- "spinning_top",
- "stm32-metapac",
- "talc",
-]
-
-[[package]]
 name = "rtic-macros"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -733,9 +746,9 @@ dependencies = [
 
 [[package]]
 name = "rtic-monotonics"
-version = "2.2.0"
+version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b9ac1afb31c5b4ec3cb477a8551082a7c5ebf80d651a351822dbf39efd2bfed"
+checksum = "d12a5e827e4a491affc0296b7c33242f03c02ef70150f93912cc9c77bb071f65"
 dependencies = [
  "cfg-if",
  "cortex-m",
