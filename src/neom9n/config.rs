@@ -23,3 +23,13 @@ pub enum DynamicModel {
     Air2g       = 7,
     Air4g       = 8,
 }
+
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum InfoVerbosity {
+    Error   = 0x01,
+    Warning = 0x02,
+    Notice  = 0x04,
+    Test    = 0x08,
+    Debug   = 0x10,
+}

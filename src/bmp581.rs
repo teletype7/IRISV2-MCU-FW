@@ -72,7 +72,7 @@ impl Bmp581 {
 }
 
 /// press in Pa, temp in C
-#[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
+#[derive(Copy, Clone, PartialEq, PartialOrd, Debug, defmt::Format)]
 pub struct BaroReport {
     press: f32,
     temp: f32

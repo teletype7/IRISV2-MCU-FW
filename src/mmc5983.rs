@@ -107,7 +107,7 @@ impl Mmc5983 {
 }
 
 /// gauss
-#[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
+#[derive(Copy, Clone, PartialEq, PartialOrd, Debug, defmt::Format)]
 pub struct MagReport {
     x: f32,
     y: f32,
@@ -115,7 +115,7 @@ pub struct MagReport {
 }
 
 /// gauss and C
-#[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
+#[derive(Copy, Clone, PartialEq, PartialOrd, Debug, defmt::Format)]
 pub struct MagReportTemperature {
     x: f32,
     y: f32,
@@ -123,7 +123,7 @@ pub struct MagReportTemperature {
     temp: f32
 }
 
-#[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
+#[derive(Copy, Clone, PartialEq, PartialOrd, Debug, defmt::Format)]
 pub struct MagReport16 {
     x: f32,
     y: f32,

@@ -187,7 +187,7 @@ impl Icm45686 {
 }
 
 /// accel in g, gyro in degrees/s
-#[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
+#[derive(Copy, Clone, PartialEq, PartialOrd, Debug, defmt::Format)]
 pub struct SixAxisReport {
     x_accel: f32,
     y_accel: f32,
@@ -197,7 +197,7 @@ pub struct SixAxisReport {
     z_gyro:  f32,
 }
 /// accel in g, gyro in degrees/s, temp in C
-#[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
+#[derive(Copy, Clone, PartialEq, PartialOrd, Debug, defmt::Format)]
 pub struct SixAxisTemperatureReport {
     x_accel: f32,
     y_accel: f32,

@@ -203,7 +203,7 @@ mod app {
         let mut fdcan = can::CanConfigurator::new(p.FDCAN1, p.PD0, p.PD1, Irqs);
         fdcan.set_bitrate(2_000_000);
         // todo for real firmware switch this to fdcan.into_normal_mode();
-        let mut fdcan = fdcan.into_internal_loopback_mode();
+        let mut fdcan = fdcan.into_normal_mode();
 
         // gps is usart3, using PD9 PD8
         // WHY WAS THE COMPILER SO ANGRY ABOUT THIS
@@ -324,25 +324,22 @@ mod app {
 
         gps.init().await;
         gps.set_model(DynamicModel::Air4g).await;
+        
+        debug!("---------- imu testing ----------");
+        debug!("icm1 report: {:#?}", icm1.get_report_and_temperature().await);
+        debug!("---------------------------------");
+        debug!("icm2 report: {:#?}", icm2.get_report_and_temperature().await);
+        debug!("-------- end imu testing --------");
+
+        debug!("---------- mag testing ----------");
+        debug!("mag report: {:#?}", mag.get_report_temperature().await);
+        debug!("-------- end mag testing --------");
+
+        debug!("---------- bmp testing ----------");
+        debug!("bmp report: {:#?}", bmp.get_report().await);
+        debug!("-------- end bmp testing --------");
 
         // spawm all tasks from here
-        task1::spawn().ok();
-        task2::spawn().ok();
-    }
-
-    // TODO: Add tasks
-    #[task(priority = 1)]
-    async fn task1(_cx: task1::Context) {
-        info!("Hello from task1!");
-    }
-
-    #[task(priority = 15, local = [loop_count])]
-    async fn task2(cx: task2::Context) {
-        loop {
-            info!("task2: before delay");
-            Mono.delay_ms(1000).await;
-            info!("task2: after delay");
-            *cx.local.loop_count += 1;
-        }
+        // task::spawn().ok();
     }
 }
